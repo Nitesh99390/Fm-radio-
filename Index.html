@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live India & Global Radio</title>
+    <style>
+        body { background: #050505; color: #00f3ff; font-family: sans-serif; text-align: center; padding: 20px; }
+        .box { border: 2px solid #00f3ff; padding: 20px; border-radius: 15px; background: rgba(0,243,255,0.05); box-shadow: 0 0 20px #00f3ff33; max-width: 400px; margin: auto; }
+        select, input { width: 100%; padding: 10px; margin: 10px 0; background: #111; border: 1px solid #00f3ff; color: white; border-radius: 5px; }
+        button { width: 100%; padding: 12px; background: #00f3ff; border: none; color: black; font-weight: bold; border-radius: 5px; cursor: pointer; }
+        .loader { display: none; margin: 10px 0; font-size: 12px; color: yellow; }
+        .playing-now { margin-top: 15px; font-weight: bold; color: #fff; text-shadow: 0 0 5px #00f3ff; }
+    </style>
+</head>
+<body>
+
+<div class="box">
+    <h2>Global Live Radio</h2>
+    
+    <p style="font-size: 12px; color: #888;">India के 1300+ स्टेशनों में से एक्टिव खोजें</p>
+
+    <input type="text" id="searchInput" placeholder="Search (e.g. Hindi, Bollywood, India)..." value="India">
+    <button onclick="fetchStations()">स्टेशन लोड करें</button>
+
+    <div id="loader" class="loader">सर्वर से कनेक्ट हो रहा है...</div>
+
+    <select id="stationList" onchange="playSelected()">
+        <option value="">-- स्टेशन चुनें --</option>
+    </select>
+
+    <div class="playing-now" id="currentStation">अभी कुछ नहीं बज रहा</div>
+    
+    <div style="margin-top: 20px;">
+        <audio id="player" controls style="width: 100%; filter: invert(1);"></audio>
+    </div>
+</div>
+
+<script>
+    const player = document.getElementById('player');
+    const stationList = document.getElementById('stationList');
+    const loader = document.getElementById('loader');
+    const currentStation = document.getElementById('currentStation');
+
+    // रेडियो ब्राउज़र API का इस्तेमाल करके एक्टिव स्टेशन खोजना
+    async function fetchStations() {
+        const query = document.getElementById('searchInput').value;
+        loader.style.display = "block";
+        stationList.innerHTML = '<option>लोड हो रहा है...</option>';
+
+        try {
+            // हम केवल 'mp3' और 'high bitrate' वाले स्टेशन मांग रहे हैं ताकि वो मोबाइल पर चलें
+            const res = await fetch(`https://de1.api.radio-browser.info/json/stations/search?name=${query}&limit=50&hidebroken=true&order=clickcount&reverse=true`);
+            const stations = await res.json();
+
+            stationList.innerHTML = '<option value="">-- स्टेशन चुनें --</option>';
+            
+            if(stations.length === 0) {
+                stationList.innerHTML = '<option>कोई स्टेशन नहीं मिला</option>';
+            }
+
+            stations.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s.url_resolved;
+                opt.innerText = `${s.name} (${s.countrycode})`;
+                stationList.appendChild(opt);
+            });
+
+            loader.style.display = "none";
+        } catch (error) {
+            alert("API Error! कृपया इंटरनेट चेक करें।");
+            loader.style.display = "none";
+        }
+    }
+
+    function playSelected() {
+        const url = stationList.value;
+        const name = stationList.options[stationList.selectedIndex].text;
+        
+        if (url) {
+            currentStation.innerText = "Connecting to: " + name;
+            player.src = url;
+            player.play().catch(e => {
+                currentStation.innerText = "Error: यह स्ट्रीम अभी ऑफलाइन है।";
+            });
+            
+            player.onplaying = () => {
+                currentStation.innerText = "Playing: " + name;
+            };
+        }
+    }
+
+    // पहली बार में India के स्टेशन लोड करें
+    window.onload = fetchStations;
+</script>
+
+</body>
+</html>
